@@ -7,9 +7,11 @@ defmodule Consumer do
     Broadway.start_link(__MODULE__,
       name: __MODULE__,
       producer: [
+        # concurrency: 1,
+        concurrency: 10,
         module: {
           BroadwaySQS.Producer,
-          queue_url: "http://localhost:4566/000000000000/sqs-demo",
+          queue_url: "http://localhost:4566/000000000000/sqs-demo.fifo",
           config: [
             scheme: "http://",
             host: "localhost",
@@ -20,26 +22,33 @@ defmodule Consumer do
         }
       ],
       processors: [
-        default: []
-      ]
-      # batchers: [
-      #   default: []
-      # ]
+        # default: [concurrency: 1]
+        default: [concurrency: 16]
+      ],
+      partition_by: &partition/1
     )
   end
 
   @impl true
+  def prepare_messages(messages, _context) do
+    Enum.map(messages, &parse_message_data/1)
+  end
+
+  @impl true
   def handle_message(_processor, %Message{data: data} = message, _context) do
-    IO.inspect(data, label: "Message")
+    IO.inspect(data.detail, label: "Consumer message data")
 
     message
   end
 
-  @impl true
-  def handle_batch(_batcher, messages, _batch_info, _context) do
-    # Send batch of successful messages as ACKs to SQS
-    # This tells SQS that this list of messages were successfully processed
-    # If there are no batchers, the acknowledgement will be done by processors (on handle_message)
-    messages
+  def partition(message) do
+    parsed_message = parse_message_data(message)
+
+    :erlang.phash2(parsed_message.data.detail.event.data)
+  end
+
+  defp parse_message_data(message) do
+    data = Poison.decode!(message.data, %{keys: :atoms})
+    Message.put_data(message, data)
   end
 end

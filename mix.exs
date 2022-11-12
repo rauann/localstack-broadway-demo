@@ -14,7 +14,7 @@ defmodule SqsDemo.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:logger, :os_mon],
       mod: {SqsDemo.Application, []}
     ]
   end
@@ -22,6 +22,7 @@ defmodule SqsDemo.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:aws, "~> 0.13.1"},
       {:broadway_sqs, "~> 0.7"},
       {:ex_aws_sqs, "~> 3.3"},
       {:ex_aws, "~> 2.4"},
